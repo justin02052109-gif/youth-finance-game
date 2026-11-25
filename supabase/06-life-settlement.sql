@@ -1,6 +1,6 @@
 BEGIN;
 CREATE OR REPLACE FUNCTION public.life_settle(p_room_id uuid,p_round integer)
-RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
 #variable_conflict use_variable
 DECLARE r public.rooms%ROWTYPE; p record; s public.player_states%ROWTYPE; o jsonb; a jsonb; opts jsonb; st jsonb; winners jsonb; chosen text; n numeric; loan numeric; cash_end numeric; debt_end numeric; study jsonb; skills jsonb; exp jsonb; experiences jsonb; degree integer; k text; progress numeric; event_text text;
 BEGIN
