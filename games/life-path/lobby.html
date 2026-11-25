@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>人生分岔路｜多人等候室</title><style>
+*{box-sizing:border-box}body{margin:0;background:#eef4f1;color:#173e3b;font:16px/1.6 system-ui,sans-serif}main{max-width:720px;margin:auto;padding:22px}section{background:white;border-radius:16px;padding:22px;margin:16px 0}button,input{font:inherit;border-radius:9px;padding:12px;margin:5px 0}input{width:100%;border:1px solid #98aaa4}button{border:0;background:#173e3b;color:white;cursor:pointer}button:disabled{opacity:.5}button.secondary{background:#e5eeea;color:#173e3b}li{padding:8px;border-bottom:1px solid #ddd}#code{font-size:38px;letter-spacing:6px;font-weight:bold}#message{white-space:pre-wrap;color:#8d3434}a{color:inherit}[hidden]{display:none!important}
+</style></head><body><main><a href="../../index.html">返回平台首頁</a><h1>人生分岔路</h1><p>多人等候室・開發測試版</p><section id="entry"><h2>主持人</h2><button id="create">建立房間</button><hr><h2>玩家</h2><label>房間代碼<input id="roomCode" maxlength="6" inputmode="numeric" autocomplete="off"></label><label>暱稱（不要使用真實姓名）<input id="nickname" maxlength="24" autocomplete="off"></label><button id="join">加入房間</button></section><section id="lobby" hidden><h2>等候室</h2><div id="code"></div><button id="copy" class="secondary">複製房間代碼</button><p id="count"></p><ul id="players"></ul><button id="ready" hidden>我準備好了</button><button id="exit" class="secondary">返回首頁</button><p>本版本僅測試加入與準備狀態，尚未開放開始遊戲。返回首頁不會移除房間內的玩家。</p></section><p id="message" role="status"></p></main>
+<script type="module">
+import {createClient} from 'https://esm.sh/@supabase/supabase-js@2';
+const client=createClient('https://kvajxqlrlsenovytxcqk.supabase.co','sb_publishable_VWFE8Kzt-Rc9IhLbjJ7AKg_60oNmlMS');
+const $=id=>document.getElementById(id);let room=sessionStorage.getItem('lifeLobbyRoom'),state=null,busy=false,refreshing=false;
+async function auth(){const {data,error}=await client.auth.getSession();if(error)throw error;if(!data.session){const result=await client.auth.signInAnonymously();if(result.error)throw result.error;}}
+async function rpc(name,args={}){const {data,error}=await client.rpc(name,args);if(error)throw error;return data;}
+function message(e){$('message').textContent=e?.message||String(e);}
+async function action(fn){if(busy)return;busy=true;document.querySelectorAll('button').forEach(b=>b.disabled=true);$('message').textContent='';try{await auth();await fn();}catch(e){message(e)}finally{busy=false;document.querySelectorAll('button').forEach(b=>b.disabled=false);}}
+async function refresh(){if(!room||refreshing)return;refreshing=true;try{state=await rpc('lobby_status',{p_room_id:room});$('entry').hidden=true;$('lobby').hidden=false;$('code').textContent=state.code;$('count').textContent='已加入 '+state.players.length+' / '+state.max_players+' 人，已準備 '+state.players.filter(p=>p.ready).length+' 人';$('players').replaceChildren(...state.players.map(p=>{const li=document.createElement('li');li.textContent=p.nickname+'　'+(p.ready?'已準備':'等待中');return li}));$('ready').hidden=state.host;$('ready').textContent=state.my_ready?'取消準備':'我準備好了';$('message').textContent='';}catch(e){message(e)}finally{refreshing=false;}}
+async function enter(id){room=id;sessionStorage.setItem('lifeLobbyRoom',id);await refresh();}
+$('create').onclick=()=>action(async()=>enter(await rpc('lobby_create')));
+$('join').onclick=()=>action(async()=>enter(await rpc('lobby_join',{p_code:$('roomCode').value.trim(),p_nickname:$('nickname').value.trim()})));
+$('ready').onclick=()=>action(async()=>{await rpc('lobby_ready',{p_room_id:room,p_ready:!state.my_ready});await refresh()});
+$('copy').onclick=()=>action(async()=>{await navigator.clipboard.writeText(state.code);$('message').textContent='已複製房間代碼'});
+$('exit').onclick=()=>{room=null;state=null;sessionStorage.removeItem('lifeLobbyRoom');$('entry').hidden=false;$('lobby').hidden=true;};
+if(room)action(refresh);setInterval(()=>{if(room&&!busy)refresh()},3000);
+</script></body></html>
